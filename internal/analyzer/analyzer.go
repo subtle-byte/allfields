@@ -11,7 +11,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name: "allfields",
-	Doc:  "Checks marked (with //allfields comment) struct literals for exhaustiveness",
+	Doc:  "checks that marked (with //allfields comment) struct literals have all fields set",
 	Run:  run,
 }
 
