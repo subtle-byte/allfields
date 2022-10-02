@@ -8,32 +8,33 @@ type Details struct {
 }
 
 type User struct {
-	Name    string
-	Age     int
-	Details Details
+	Name string
+	Age  int
+	Details
 }
 
 func F() {
-	_ = User{
+	_ = User{ // want `field Age is not set`
 		Name:    "John",
 		Details: Details{ // want `fields Detail1, Detail2 are not set`
 			//allfields
 		},
-		//allfields ignore=Age,Name // want `field Name is marked as ignored but is present in the struct literal`
+		//allfields
 	}
 
 	_ = User{
 		Name: "John",
 	}
 
-	_ = User{ // want `field Details is not set`
-		Name: "John",
-		Age:  25,
-		//allfields ignore=Abc // want `field Abc is not present in the struct but ignored`
+	_ = User{
+		Name:    "John",
+		Age:     25,
+		Details: Details{},
+		//allfields
 	}
 
 	_ = fixtures2.WithPrivate{ // want `field Name is not set`
-		//allfields ignore=somePrivate // want `unexported field somePrivate is not available in this package, so the field should not be ignored`
+		//allfields
 	}
 
 	_ = Details{

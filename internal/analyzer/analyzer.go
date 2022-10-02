@@ -15,41 +15,20 @@ var Analyzer = &analysis.Analyzer{
 	Run:  run,
 }
 
-type parsedComment struct {
-	*ast.Comment
-	IgnoredFields []string
-}
-
-func parseComment(pass *analysis.Pass, comment *ast.Comment) (_ parsedComment, ok bool) {
-	text := strings.TrimSpace(comment.Text)
-	if i := strings.Index(text, " // want"); i != -1 {
-		text = text[:i]
-	}
-	if text == "//allfields" {
-		return parsedComment{
-			Comment: comment,
-		}, true
-	} else if strings.HasPrefix(text, "//allfields ") {
-		if strings.HasPrefix(text, "//allfields ignore=") {
-			return parsedComment{
-				Comment:       comment,
-				IgnoredFields: strings.Split(text[len("//allfields ignore="):], ","),
-			}, true
-		} else {
-			pass.ReportRangef(comment, "invalid allfields comment")
-			return parsedComment{}, false
-		}
-	}
-	return parsedComment{}, false
-}
-
-func getAllfieldsComments(pass *analysis.Pass, file *ast.File) []parsedComment {
-	allfieldsComments := []parsedComment(nil)
+func getAllfieldsComments(pass *analysis.Pass, file *ast.File) []*ast.Comment {
+	allfieldsComments := []*ast.Comment(nil)
 	for _, commentGroup := range file.Comments {
 		for _, comment := range commentGroup.List {
-			allfieldParsedComment, ok := parseComment(pass, comment)
-			if ok {
-				allfieldsComments = append(allfieldsComments, allfieldParsedComment)
+			text := strings.TrimSpace(comment.Text)
+			if i := strings.Index(text, " // want"); i != -1 { // for testing
+				text = text[:i]
+			}
+			if text == "//allfields" {
+				allfieldsComments = append(allfieldsComments, comment)
+			} else if strings.HasPrefix(text, "//allfields ") {
+				if text != "//allfields " {
+					pass.ReportRangef(comment, "invalid allfields comment")
+				}
 			}
 		}
 	}
@@ -60,7 +39,7 @@ func getAllfieldsComments(pass *analysis.Pass, file *ast.File) []parsedComment {
 	return allfieldsComments
 }
 
-func findCommentForCompositeLiteral(pass *analysis.Pass, astCompositeLit *ast.CompositeLit, allfieldsComments []parsedComment) (parsedComment, bool) {
+func findCommentForCompositeLiteral(pass *analysis.Pass, astCompositeLit *ast.CompositeLit, allfieldsComments []*ast.Comment) (*ast.Comment, bool) {
 	// Index of the first allfields comment after the composite literal start
 	commentI := sort.Search(len(allfieldsComments), func(i int) bool {
 		return allfieldsComments[i].Pos() >= astCompositeLit.Lbrace
@@ -69,12 +48,12 @@ commentsFor:
 	for {
 		if commentI >= len(allfieldsComments) {
 			// allfields comment not found
-			return parsedComment{}, false
+			return nil, false
 		}
 		comment := allfieldsComments[commentI]
 		if comment.Pos() > astCompositeLit.Rbrace {
 			// allfields comment is after the composite literal end, so it's not for this composite literal
-			return parsedComment{}, false
+			return nil, false
 		}
 		for _, elem := range astCompositeLit.Elts {
 			if elem.Pos() <= comment.Pos() && comment.Pos() <= elem.End() {
@@ -113,34 +92,17 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return true
 			}
 
-			usedComments[comment.Comment] = true
+			usedComments[comment] = true
 
-			fields := map[string]bool{}
-			unexportedFieldsFromAnotherPkg := map[string]bool{}
+			fields := map[string]bool{} // field name -> is used
 			fieldsOrdered := []string(nil)
 			for i := 0; i < typesStruct.NumFields(); i++ {
 				field := typesStruct.Field(i)
 				if !field.Exported() && field.Pkg() != pass.Pkg {
-					unexportedFieldsFromAnotherPkg[field.Name()] = true
 					continue
 				}
 				fields[field.Name()] = false
 				fieldsOrdered = append(fieldsOrdered, field.Name())
-			}
-
-			ignoredFields := map[string]bool{}
-			for _, ignoredField := range comment.IgnoredFields {
-				ignoredFields[ignoredField] = true
-			}
-			for ignoredField := range ignoredFields {
-				if _, ok := fields[ignoredField]; !ok {
-					if !unexportedFieldsFromAnotherPkg[ignoredField] {
-						pass.ReportRangef(comment, "field %v is not present in the struct but ignored", ignoredField)
-					} else {
-						pass.ReportRangef(comment, "unexported field %v is not available in this package, so the field should not be ignored", ignoredField)
-					}
-					delete(ignoredFields, ignoredField)
-				}
 			}
 
 			for _, compositeElem := range astCompositeLit.Elts {
@@ -156,15 +118,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			notSetFields := []string(nil)
 			for _, field := range fieldsOrdered {
 				if !fields[field] {
-					if !ignoredFields[field] {
-						notSetFields = append(notSetFields, field)
-					} else {
-						delete(ignoredFields, field)
-					}
+					notSetFields = append(notSetFields, field)
 				}
-			}
-			for ignoredField := range ignoredFields {
-				pass.ReportRangef(comment, "field %v is marked as ignored but is present in the struct literal", ignoredField)
 			}
 			if len(notSetFields) > 0 {
 				if len(notSetFields) == 1 {
@@ -177,7 +132,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return true
 		})
 		for _, comment := range allfieldsComments {
-			if !usedComments[comment.Comment] {
+			if !usedComments[comment] {
 				pass.ReportRangef(comment, "allfields comment is not used")
 			}
 		}
