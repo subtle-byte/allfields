@@ -22,3 +22,21 @@ func main() {
     }
 }
 ```
+
+### Use cases
+
+Developing backend services in Go we frequently meet the situation when we need to copy the data between structs. Let's imagine we write grpc server:
+
+```go
+func (s *grpcServer) GetUser(ctx context.Context, req *api.GetUserRequest) (*api.GetUserResponse, error) {
+	user := s.Service.GetUser(ctx, req.Id)
+	return &api.GetUserResponse{
+		Id: user.ID,		
+		Name: user.Name,
+		Age: user.Age,
+		//allfields
+	}, nil
+}
+```
+
+In this example `//allfields` guarantees that if you extend API by adding fields to `User` (for example adding field `CreatedAt`) you will not forget to set this new field in `GetUserResponse`.
