@@ -19,7 +19,7 @@ func F() {
 		Details: Details{ // want `fields Detail1, Detail2 are not set`
 			//allfields
 		},
-		//allfields
+		//allfields:lint
 	}
 
 	_ = User{

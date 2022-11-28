@@ -23,12 +23,10 @@ func getAllfieldsComments(pass *analysis.Pass, file *ast.File) []*ast.Comment {
 			if i := strings.Index(text, " // want"); i != -1 { // for testing
 				text = text[:i]
 			}
-			if text == "//allfields" {
+			if text == "//allfields" || text == "//allfields:lint" {
 				allfieldsComments = append(allfieldsComments, comment)
-			} else if strings.HasPrefix(text, "//allfields ") {
-				if text != "//allfields " {
-					pass.ReportRangef(comment, "invalid allfields comment")
-				}
+			} else if strings.HasPrefix(text, "//allfields ") || strings.HasPrefix(text, "//allfields:lint ") {
+				pass.ReportRangef(comment, "invalid allfields comment")
 			}
 		}
 	}
