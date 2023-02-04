@@ -2,7 +2,7 @@
 
 allfields is a Go linter. It checks that all fields in the struct literal are set.
 
-allfields checks only the struct literals with the `//allfields` comments just inside them. In the following example the linter will throw error because the `Age` field is not set while creating `userAlice`, but `userBob` will successfully pass the checks. To run the allfields linter use the command like `go run github.com/subtle-byte/allfields/cmd/go-allfields path/to/packages`.
+allfields checks only the struct literals with the `//allfields` comments just inside them. In the following example the linter will throw error because the `Age` field is not set while creating `userAlice`, but `userBob` will successfully pass the checks. To run the allfields linter use the command like `go run github.com/subtle-byte/allfields/cmd/go-allfields path/to/packages` (`path/to/packages` can be `../...` for example).
 
 ```go
 type User struct {
@@ -23,6 +23,8 @@ func main() {
 }
 ```
 
+Also, you can use the `//allfields:lint` comment instead of `//allfields` if you think it looks better or your IDE handles it better.
+
 ### Use cases
 
 Developing backend services in Go we frequently meet the situation when we need to copy the data between structs. Let's imagine we write grpc server:
@@ -40,3 +42,23 @@ func (s *grpcServer) GetUser(ctx context.Context, req *api.GetUserRequest) (*api
 ```
 
 In this example `//allfields` guarantees that if you extend API by adding fields to `User` (for example adding field `CreatedAt`) you will not forget to set this new field in `GetUserResponse`.
+
+### Run from tests
+
+You can run allfields from tests. To do this you need to add the following code:
+
+```go
+import (
+	"testing"
+	allfields "github.com/subtle-byte/allfields/pkg/analyzer"
+)
+
+func TestAllFields(t *testing.T) {
+	allfields.Analyze(allfields.AnalyzeConfig{
+		PackagesPattern: ".", // or "../..." for example
+		ReportErr: func(message string) {
+			t.Error(message)
+		},
+	})
+}
+```
