@@ -50,7 +50,7 @@ You can run allfields from tests. To do this you need to add the following code:
 ```go
 import (
 	"testing"
-	allfields "github.com/subtle-byte/allfields/pkg/analyzer"
+	"github.com/subtle-byte/allfields"
 )
 
 func TestAllFields(t *testing.T) {

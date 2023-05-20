@@ -1,4 +1,4 @@
-package analyzer
+package allfields
 
 import (
 	"testing"
@@ -37,6 +37,6 @@ func TestAnalyze(t *testing.T) {
 		t.Log(err)
 	}
 	require.Len(t, errs, 2)
-	assert.Contains(t, errs[0], "analyzer/analyze_test.go:15:6: field Age is not set")
-	assert.Contains(t, errs[1], "analyzer/analyze_test.go:24:6: fields Name, Age are not set")
+	assert.Contains(t, errs[0], "analyze_test.go:15:6: field Age is not set")
+	assert.Contains(t, errs[1], "analyze_test.go:24:6: fields Name, Age are not set")
 }

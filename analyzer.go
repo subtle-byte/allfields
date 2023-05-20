@@ -1,4 +1,4 @@
-package analyzer
+package allfields
 
 import "github.com/subtle-byte/allfields/internal/analyzer"
 
